@@ -1,5 +1,8 @@
 import sys
 from optparse import OptionParser
+from yolo.dataset.text_dataset import TextDataSet
+from yolo.net.yolo_tiny_net import YoloTinyNet
+from yolo.solver.yolo_solver import YoloSolver
 
 sys.path.append('./')
 
@@ -17,7 +20,7 @@ else:
   exit(0)
 
 common_params, dataset_params, net_params, solver_params = process_config(conf_file)
-dataset = eval(dataset_params['name'])(common_params, dataset_params)
-net = eval(net_params['name'])(common_params, net_params)
-solver = eval(solver_params['name'])(dataset, net, common_params, solver_params)
+dataset = TextDataSet(common_params, dataset_params) #eval(dataset_params['name'])(common_params, dataset_params)
+net = YoloTinyNet(common_params, net_params) #eval(net_params['name'])(common_params, net_params)
+solver = YoloSolver(dataset, net, common_params, solver_params) #eval(solver_params['name'])(dataset, net, common_params, solver_params)
 solver.solve()

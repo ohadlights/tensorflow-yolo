@@ -1,1 +1,1 @@
-import process_config
+from yolo.utils import process_config

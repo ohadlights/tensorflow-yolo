@@ -15,8 +15,8 @@ classes_num = {'aeroplane': 0, 'bicycle': 1, 'bird': 2, 'boat': 3, 'bottle': 4, 
     'sofa': 17, 'train': 18, 'tvmonitor': 19}
 
 YOLO_ROOT = os.path.abspath('./')
-DATA_PATH = os.path.join(YOLO_ROOT, 'data/VOCdevkit2007')
-OUTPUT_PATH = os.path.join(YOLO_ROOT, 'data/pascal_voc.txt')
+DATA_PATH = os.path.join(YOLO_ROOT, r'D:\FaceWorkspace\datasets')
+OUTPUT_PATH = os.path.join(YOLO_ROOT, r'..\data\pascal_voc.txt')
 
 def parse_xml(xml_file):
   """parse xml_file
@@ -35,7 +35,7 @@ def parse_xml(xml_file):
 
   for item in root:
     if item.tag == 'filename':
-      image_path = os.path.join(DATA_PATH, 'VOC2007/JPEGImages', item.text)
+      image_path = os.path.join(DATA_PATH, r'VOC2007\JPEGImages', item.text)
     elif item.tag == 'object':
       obj_name = item[0].text
       obj_num = classes_num[obj_name]
