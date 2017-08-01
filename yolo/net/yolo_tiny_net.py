@@ -68,21 +68,21 @@ class YoloTinyNet(Net):
     temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 256, 512], stride=1)
     conv_num += 1
 
-    temp_conv = self.max_pool(temp_conv, [2, 2], 2)
-
-    temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 512, 1024], stride=1)
-    conv_num += 1     
-
-    temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 1024, 1024], stride=1)
-    conv_num += 1 
-
-    temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 1024, 1024], stride=1)
-    conv_num += 1 
+    # temp_conv = self.max_pool(temp_conv, [2, 2], 2)
+    #
+    # temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 512, 1024], stride=1)
+    # conv_num += 1
+    #
+    # temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 1024, 1024], stride=1)
+    # conv_num += 1
+    #
+    # temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 1024, 1024], stride=1)
+    # conv_num += 1
 
     temp_conv = tf.transpose(temp_conv, (0, 3, 1, 2))
 
     #Fully connected layer
-    local1 = self.local('local1', temp_conv, self.cell_size * self.cell_size * 1024, 256)
+    local1 = self.local('local1', temp_conv, self.cell_size * self.cell_size * 512, 256)
 
     local2 = self.local('local2', local1, 256, 4096)
  
@@ -291,7 +291,7 @@ class YoloTinyNet(Net):
       predict = predicts[i, :, :, :]
       label = labels[i, :, :]
       object_num = objects_num[i]
-      nilboy = tf.ones([7,7,2])
+      nilboy = tf.ones([13,13,2])
       tuple_results = tf.while_loop(self.cond1, self.body1, [tf.constant(0), object_num, [class_loss, object_loss, noobject_loss, coord_loss], predict, label, nilboy])
       for j in range(4):
         loss[j] = loss[j] + tuple_results[2][j]

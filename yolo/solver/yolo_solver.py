@@ -84,6 +84,7 @@ class YoloSolver(Solver):
 
         sess.run(init)
         if self.pretrain_path is not None:
+            print('restore weights: {0}'.format(self.pretrain_path))
             saver1.restore(sess, self.pretrain_path)
 
         summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph)

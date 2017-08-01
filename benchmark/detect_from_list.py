@@ -99,7 +99,7 @@ def detect(input_list_path, output_list_path, image_size):
 
         saver = tf.train.Saver(net.trainable_collection)
 
-        saver.restore(sess, r'..\models\train_face\model.ckpt-5000')
+        saver.restore(sess, r'..\models\train_face\model.ckpt-10000')
 
         image_list = open(input_list_path).readlines()
 
