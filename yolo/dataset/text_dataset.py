@@ -99,6 +99,9 @@ class TextDataSet(DataSet):
       xmax = record[i + 2]
       ymax = record[i + 3]
       class_num = record[i + 4]
+      landmarks = []
+      for j in range(5, 5 + 10):
+        landmarks += [record[i + j]]
 
       xcenter = (xmin + xmax) * 1.0 / 2 * width_rate
       ycenter = (ymin + ymax) * 1.0 / 2 * height_rate
@@ -106,9 +109,9 @@ class TextDataSet(DataSet):
       box_w = (xmax - xmin) * width_rate
       box_h = (ymax - ymin) * height_rate
 
-      labels[object_num] = [xcenter, ycenter, box_w, box_h, class_num]
+      labels[object_num] = [xcenter, ycenter, box_w, box_h, class_num] + landmarks
       object_num += 1
-      i += 5
+      i += 15
       if object_num >= self.max_objects:
         break
     return [image, labels, object_num]

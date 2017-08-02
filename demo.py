@@ -59,7 +59,7 @@ net_params = {'cell_size': 7, 'boxes_per_cell':2, 'weight_decay': 0.0005}
 net = YoloTinyNet(common_params, net_params, test=True)
 
 image = tf.placeholder(tf.float32, (1, 448, 448, 3))
-predicts = net.inference(image)
+bb_predicts, landmarks_predict = net.inference(image)
 
 sess = tf.Session()
 
@@ -77,7 +77,7 @@ saver = tf.train.Saver(net.trainable_collection)
 
 saver.restore(sess, 'models/train_face/model.ckpt-10000')
 
-np_predict = sess.run(predicts, feed_dict={image: np_img})
+np_predict = sess.run(bb_predicts, feed_dict={image: np_img})
 
 xmin, ymin, xmax, ymax, class_num = process_predicts(np_predict)
 class_name = classes_name[class_num]
