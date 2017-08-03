@@ -102,15 +102,20 @@ class YoloTinyNet(Net):
 
         bb_predicts = local3
 
-        # Landmarks prediction
+############### Landmarks prediction ###############
+
         landmarks_1 = self.local('landmarks_1', temp_conv, self.cell_size * self.cell_size * 512, 256)
         landmarks_2 = self.local('landmarks_2', landmarks_1, 256, 4096)
         landmarks_3 = self.local('landmarks_3', landmarks_2, 4096,
                                  self.cell_size * self.cell_size * (self.boxes_per_cell * 10), leaky=False,
                                  pretrain=False, train=True)
-        landmarks_predict = tf.reshape(landmarks_3, (self.cell_size, self.cell_size, self.boxes_per_cell, 10), 'landmarks_predict')
+        #landmarks_3 = tf.reshape(landmarks_3, (self.cell_size, self.cell_size, self.boxes_per_cell, 10))
 
-        return bb_predicts, landmarks_predict
+        landmarks = tf.reshape(landmarks_3[:, :], (-1, self.cell_size, self.cell_size, self.boxes_per_cell, 10))
+
+############### Landmarks prediction ###############
+
+        return bb_predicts, landmarks
 
     def iou(self, boxes1, boxes2):
         """calculate ious
@@ -294,7 +299,7 @@ class YoloTinyNet(Net):
         predict_landmarks = base_landmarks + predict_landmarks
 
         diff = predict_landmarks - label_landmarks
-        diff = tf.reduce_sum(diff, axis=3)
+        diff = tf.reduce_sum(diff, axis=4)
 
         landmarks_loss = tf.nn.l2_loss(I * (diff) / (self.image_size / self.cell_size)) * self.coord_scale
 
@@ -328,9 +333,9 @@ class YoloTinyNet(Net):
             tuple_results = tf.while_loop(self.cond1, self.body1, [tf.constant(0), object_num,
                                                                    [class_loss, object_loss, noobject_loss, coord_loss, landmarks_loss],
                                                                    predict, landmarks_predicts, label, nilboy])
-            for j in range(4):
+            for j in range(5):
                 loss[j] = loss[j] + tuple_results[2][j]
-            nilboy = tuple_results[5]
+            nilboy = tuple_results[6]
 
         tf.add_to_collection('losses', (loss[0] + loss[1] + loss[2] + loss[3] + loss[4]) / self.batch_size)
 

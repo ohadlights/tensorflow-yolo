@@ -28,6 +28,7 @@ class YoloSolver(Solver):
             solver_params['pretrain_model_path']) if 'pretrain_model_path' in solver_params else None
         self.train_dir = str(solver_params['train_dir'])
         self.max_iterators = int(solver_params['max_iterators'])
+        self.checkpoint_each_steps = int(solver_params['checkpoint_each_steps'])
         #
         self.dataset = dataset
         self.net = net
@@ -118,6 +119,6 @@ class YoloSolver(Solver):
                 summary_str = sess.run(summary_op, feed_dict={self.images: np_images, self.labels: np_labels,
                                                               self.objects_num: np_objects_num})
                 summary_writer.add_summary(summary_str, step)
-            if step % 5000 == 0:
+            if step % self.checkpoint_each_steps == 0:
                 saver2.save(sess, self.train_dir + '/model.ckpt', global_step=step)
         sess.close()
