@@ -11,8 +11,16 @@ import numpy as np
 classes_name = ["face"]
 
 
-def process_landmarks_predicts(predicts):
-    return None
+def process_landmarks_predicts(predicts, index):
+    predicts = predicts[0, index[0], index[1], index[2], :]
+    landmarks = []
+    for i in range(0, 10, 2):
+        x = int(predicts[i] * (416 / 13.0))
+        y = int(predicts[i+1] * (416 / 13.0))
+        x = abs(x)
+        y = abs(y)
+        landmarks += [[x, y]]
+    return landmarks
 
 
 def process_predicts(predicts):
@@ -54,7 +62,7 @@ def process_predicts(predicts):
     xmax = xmin + w
     ymax = ymin + h
 
-    return xmin, ymin, xmax, ymax, class_num
+    return xmin, ymin, xmax, ymax, class_num, index
 
 
 common_params = {'image_size': 416, 'num_classes': 1,
@@ -79,14 +87,16 @@ np_img = np.reshape(np_img, (1, 416, 416, 3))
 
 saver = tf.train.Saver(net.trainable_collection)
 
-saver.restore(sess, 'models/train_face/model.ckpt-2000')
+saver.restore(sess, 'models/train_face/model.ckpt-3500')
 
-np_predict, np_landmarks_predict = sess.run(bb_predicts, landmarks_predict, feed_dict={image: np_img})
+np_predict, np_landmarks_predict = sess.run([bb_predicts, landmarks_predict], feed_dict={image: np_img})
 
-xmin, ymin, xmax, ymax, class_num = process_predicts(np_predict)
-landmarks = process_landmarks_predicts(np_landmarks_predict)
+xmin, ymin, xmax, ymax, class_num, index = process_predicts(np_predict)
+landmarks = process_landmarks_predicts(np_landmarks_predict, index)
 class_name = classes_name[class_num]
 cv2.rectangle(resized_img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 0, 255))
+for i in range(len(landmarks)):
+    cv2.circle(resized_img, (landmarks[i][0], landmarks[i][1]), 2, (0, 255, 0), 2)
 cv2.putText(resized_img, class_name, (int(xmin), int(ymin)), 2, 1.5, (0, 0, 255))
 cv2.imshow('result', resized_img)
 cv2.waitKey(0)
