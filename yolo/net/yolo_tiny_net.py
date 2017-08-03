@@ -100,16 +100,17 @@ class YoloTinyNet(Net):
 
         local3 = tf.concat([class_probs, scales, boxes], 3)
 
-        bB_predicts = local3
+        bb_predicts = local3
 
         # Landmarks prediction
         landmarks_1 = self.local('landmarks_1', temp_conv, self.cell_size * self.cell_size * 512, 256)
         landmarks_2 = self.local('landmarks_2', landmarks_1, 256, 4096)
-        landmarks_3 = self.local('landmarks_3', landmarks_1, 4096,
+        landmarks_3 = self.local('landmarks_3', landmarks_2, 4096,
                                  self.cell_size * self.cell_size * (self.boxes_per_cell * 10), leaky=False,
                                  pretrain=False, train=True)
+        landmarks_predict = tf.reshape(landmarks_3, (self.cell_size, self.cell_size, self.boxes_per_cell, 10), 'landmarks_predict')
 
-        return bB_predicts, landmarks_3
+        return bb_predicts, landmarks_predict
 
     def iou(self, boxes1, boxes2):
         """calculate ious
@@ -144,13 +145,13 @@ class YoloTinyNet(Net):
 
         return inter_square / (square1 + square2 - inter_square + 1e-6)
 
-    def cond1(self, num, object_num, loss, predict, label, nilboy):
+    def cond1(self, num, object_num, loss, predict, landmarks_predicts, label, nilboy):
         """
         if num < object_num
         """
         return num < object_num
 
-    def body1(self, num, object_num, loss, predict, labels, nilboy):
+    def body1(self, num, object_num, loss, predict, landmarks_predicts, labels, nilboy):
         """
         calculate loss
         Args:
@@ -277,10 +278,32 @@ class YoloTinyNet(Net):
                       tf.nn.l2_loss(I * (p_sqrt_w - sqrt_w)) / self.image_size +
                       tf.nn.l2_loss(I * (p_sqrt_h - sqrt_h)) / self.image_size) * self.coord_scale
 
+############## Landmarks.... ##############
+
+        # landmarks_loss
+        label_landmarks = tf.zeros((self.cell_size, self.cell_size, self.boxes_per_cell, 10)) + label[5:]
+
+        predict_landmarks = landmarks_predicts * (self.image_size / self.cell_size)
+
+        base_landmarks = np.zeros([self.cell_size, self.cell_size, 2, 10])
+        for y in range(self.cell_size):
+            for x in range(self.cell_size):
+                for i in range(0, 10, 2):
+                    base_landmarks[y, x, :, i:i+2] = [self.image_size / self.cell_size * x, self.image_size / self.cell_size * y]
+
+        predict_landmarks = base_landmarks + predict_landmarks
+
+        diff = predict_landmarks - label_landmarks
+        diff = tf.reduce_sum(diff, axis=3)
+
+        landmarks_loss = tf.nn.l2_loss(I * (diff) / (self.image_size / self.cell_size)) * self.coord_scale
+
+############## Landmarks.... ##############
+
         nilboy = I
 
         return num + 1, object_num, [loss[0] + class_loss, loss[1] + object_loss, loss[2] + noobject_loss,
-                                     loss[3] + coord_loss], predict, labels, nilboy
+                                     loss[3] + coord_loss, loss[4] + landmarks_loss], predict, landmarks_predicts, labels, nilboy
 
     def loss(self, bb_predicts, landmarks_predicts, labels, objects_num):
         """Add Loss to all the trainable variables
@@ -303,8 +326,8 @@ class YoloTinyNet(Net):
             object_num = objects_num[i]
             nilboy = tf.ones([13, 13, 2])
             tuple_results = tf.while_loop(self.cond1, self.body1, [tf.constant(0), object_num,
-                                                                   [class_loss, object_loss, noobject_loss, coord_loss],
-                                                                   predict, label, nilboy])
+                                                                   [class_loss, object_loss, noobject_loss, coord_loss, landmarks_loss],
+                                                                   predict, landmarks_predicts, label, nilboy])
             for j in range(4):
                 loss[j] = loss[j] + tuple_results[2][j]
             nilboy = tuple_results[5]
@@ -317,6 +340,6 @@ class YoloTinyNet(Net):
         tf.summary.scalar('coord_loss', loss[3] / self.batch_size)
         tf.summary.scalar('landmarks_loss', loss[4] / self.batch_size)
         tf.summary.scalar('weight_loss', tf.add_n(tf.get_collection('losses')) - (
-        loss[0] + loss[1] + loss[2] + loss[3] + loss[4]) / self.batch_size)
+            loss[0] + loss[1] + loss[2] + loss[3] + loss[4]) / self.batch_size)
 
         return tf.add_n(tf.get_collection('losses'), name='total_loss'), nilboy

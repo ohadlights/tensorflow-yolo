@@ -100,8 +100,9 @@ class TextDataSet(DataSet):
       ymax = record[i + 3]
       class_num = record[i + 4]
       landmarks = []
-      for j in range(5, 5 + 10):
-        landmarks += [record[i + j]]
+      for j in range(5, 5 + 10, 2):
+        landmarks += [record[i + j] * width_rate]
+        landmarks += [record[i + j + 1] * height_rate]
 
       xcenter = (xmin + xmax) * 1.0 / 2 * width_rate
       ycenter = (ymin + ymax) * 1.0 / 2 * height_rate

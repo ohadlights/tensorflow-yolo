@@ -93,7 +93,7 @@ def detect(input_list_path, output_list_path, image_size):
     net = YoloTinyNet(common_params, net_params, test=True)
 
     image = tf.placeholder(tf.float32, (1, image_size, image_size, 3))
-    predicts = net.inference(image)
+    predicts, landmarks_predicts = net.inference(image)
 
     with tf.Session() as sess:
 
