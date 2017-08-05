@@ -15,10 +15,8 @@ def process_landmarks_predicts(predicts, index):
     predicts = predicts[0, index[0], index[1], index[2], :]
     landmarks = []
     for i in range(0, 10, 2):
-        x = int(predicts[i] * (416 / 13.0))
-        y = int(predicts[i+1] * (416 / 13.0))
-        x = abs(x)
-        y = abs(y)
+        x = int((predicts[i] + index[1]) * (416 / 13.0))
+        y = int((predicts[i+1] + index[0]) * (416 / 13.0))
         landmarks += [[x, y]]
     return landmarks
 
@@ -87,7 +85,7 @@ np_img = np.reshape(np_img, (1, 416, 416, 3))
 
 saver = tf.train.Saver(net.trainable_collection)
 
-saver.restore(sess, 'models/train_face/model.ckpt-3500')
+saver.restore(sess, 'models/train_face/model.ckpt-5000')
 
 np_predict, np_landmarks_predict = sess.run([bb_predicts, landmarks_predict], feed_dict={image: np_img})
 

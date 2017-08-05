@@ -15,6 +15,8 @@ def preprocess(source_root_dir, output_path):
                     data = json.load(f)
                 if 'image_path' in data:
                     image_file_path = data['image_path']
+                    if ' ' in image_file_path:
+                        continue
                     if 'rect' in data and 'dlib_rect' in data: # checking dlib rectangle to get some assurance that the face is somewhat frontal
                         rect = data['rect']
                         landmarks = data['landmarks']

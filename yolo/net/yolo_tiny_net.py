@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 import numpy as np
-import re
+import os
 
 from yolo.net.net import Net
 
@@ -283,12 +283,12 @@ class YoloTinyNet(Net):
                       tf.nn.l2_loss(I * (p_sqrt_w - sqrt_w)) / self.image_size +
                       tf.nn.l2_loss(I * (p_sqrt_h - sqrt_h)) / self.image_size) * self.coord_scale
 
-############## Landmarks.... ##############
+############## Landmarks loss.... ##############
 
-        # landmarks_loss
-        label_landmarks = tf.zeros((self.cell_size, self.cell_size, self.boxes_per_cell, 10)) + label[5:]
+        label_raw = label[5:]
+        label_landmarks = tf.zeros((self.cell_size, self.cell_size, self.boxes_per_cell, 10)) + label_raw
 
-        predict_landmarks = landmarks_predicts * (self.image_size / self.cell_size)
+        processed_landmarks_predicts = landmarks_predicts * (self.image_size / self.cell_size)
 
         base_landmarks = np.zeros([self.cell_size, self.cell_size, 2, 10])
         for y in range(self.cell_size):
@@ -296,14 +296,60 @@ class YoloTinyNet(Net):
                 for i in range(0, 10, 2):
                     base_landmarks[y, x, :, i:i+2] = [self.image_size / self.cell_size * x, self.image_size / self.cell_size * y]
 
-        predict_landmarks = base_landmarks + predict_landmarks
+        processed_landmarks_predicts = base_landmarks + processed_landmarks_predicts
 
-        diff = predict_landmarks - label_landmarks
-        diff = tf.reduce_sum(diff, axis=4)
+        diff = \
+            tf.sqrt(
+                tf.reduce_sum(
+                    tf.square(
+                        tf.subtract(processed_landmarks_predicts, label_landmarks)),
+                    axis=3))
 
-        landmarks_loss = tf.nn.l2_loss(I * (diff) / (self.image_size / self.cell_size)) * self.coord_scale
+        landmarks_loss = tf.nn.l2_loss(I * diff / (self.image_size / self.cell_size)) * self.coord_scale
 
-############## Landmarks.... ##############
+        def _debug_print_func(landmarks_loss, label, label_raw, label_landmarks, landmarks_predicts, base_landmarks, processed_landmarks_predicts, diff, I):
+            log_file = r'd:\temp\debug_yolo.txt'
+            if os.path.exists(log_file):
+                append_write = 'a'  # append if already exists
+            else:
+                append_write = 'w'  # make a new file if not
+            with open(log_file, append_write) as f:
+                f.write('label.shape = {}\n'.format(label.shape))
+                f.write('label = {}\n'.format(label))
+
+                f.write('label_raw = {}\n'.format(label_raw))
+
+                index = np.argmax(I)
+                index = np.unravel_index(index, I.shape)
+                f.write('I.shape = {}\n'.format(I.shape))
+                f.write('np.argmax(I) = {}\n'.format(index))
+                f.write('I[index] = {}\n'.format(I[index]))
+
+                f.write('\n')
+
+                f.write('landmarks_predicts.shape = {}\n'.format(landmarks_predicts.shape))
+                f.write('landmarks_predicts[index] = {}\n'.format(landmarks_predicts[index]))
+
+                f.write('\n')
+
+                f.write('processed_landmarks_predicts[index] = {}\n'.format(processed_landmarks_predicts[index]))
+                f.write('label_landmarks[index] = {}\n'.format(label_landmarks[index]))
+
+                f.write('\n')
+
+                f.write('diff[index] = {}\n'.format(diff[index]))
+
+                f.write('landmarks_loss = {}\n'.format(landmarks_loss))
+
+                f.write('\n\n*************\n\n')
+                f.flush()
+            return False
+
+        debug_pring_landmarks_loss = tf.py_func(_debug_print_func, [landmarks_loss,label, label_raw, label_landmarks, landmarks_predicts, base_landmarks, processed_landmarks_predicts, diff, I], [tf.bool])
+        with tf.control_dependencies(debug_pring_landmarks_loss):
+            landmarks_loss = tf.identity(landmarks_loss, name='debug_pring_landmarks_loss')
+
+############## Landmarks loss.... ##############
 
         nilboy = I
 
@@ -327,12 +373,13 @@ class YoloTinyNet(Net):
         loss = [0, 0, 0, 0, 0]
         for i in range(self.batch_size):
             predict = bb_predicts[i, :, :, :]
+            predict_ls = landmarks_predicts[i, :, :, :, :]
             label = labels[i, :, :]
             object_num = objects_num[i]
             nilboy = tf.ones([13, 13, 2])
             tuple_results = tf.while_loop(self.cond1, self.body1, [tf.constant(0), object_num,
                                                                    [class_loss, object_loss, noobject_loss, coord_loss, landmarks_loss],
-                                                                   predict, landmarks_predicts, label, nilboy])
+                                                                   predict, predict_ls, label, nilboy])
             for j in range(5):
                 loss[j] = loss[j] + tuple_results[2][j]
             nilboy = tuple_results[6]
