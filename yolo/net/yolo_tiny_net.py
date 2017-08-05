@@ -29,6 +29,7 @@ class YoloTinyNet(Net):
             self.noobject_scale = float(net_params['noobject_scale'])
             self.class_scale = float(net_params['class_scale'])
             self.coord_scale = float(net_params['coord_scale'])
+            self.landmarks_scale = float(net_params['landmarks_scale'])
 
     def inference(self, images):
         """Build the yolo model
@@ -305,30 +306,30 @@ class YoloTinyNet(Net):
                         tf.subtract(processed_landmarks_predicts, label_landmarks)),
                     axis=3))
 
-        landmarks_loss = tf.nn.l2_loss(I * diff / (self.image_size / self.cell_size)) * self.coord_scale
+        landmarks_loss = tf.nn.l2_loss(I * diff / (self.image_size / self.cell_size)) * self.landmarks_scale
 
-        def _debug_print_func(landmarks_loss, label, label_raw, label_landmarks, landmarks_predicts, base_landmarks, processed_landmarks_predicts, diff, I):
+        def _debug_print_func(landmarks_loss, label, label_raw, label_landmarks, landmarks_predicts, base_landmarks, processed_landmarks_predicts, diff, I, class_loss, object_loss, coord_loss, noobject_loss):
             log_file = r'd:\temp\debug_yolo.txt'
             if os.path.exists(log_file):
                 append_write = 'a'  # append if already exists
             else:
                 append_write = 'w'  # make a new file if not
             with open(log_file, append_write) as f:
-                f.write('label.shape = {}\n'.format(label.shape))
-                f.write('label = {}\n'.format(label))
+                # f.write('label.shape = {}\n'.format(label.shape))
+                # f.write('label = {}\n'.format(label))
 
                 f.write('label_raw = {}\n'.format(label_raw))
 
                 index = np.argmax(I)
                 index = np.unravel_index(index, I.shape)
-                f.write('I.shape = {}\n'.format(I.shape))
-                f.write('np.argmax(I) = {}\n'.format(index))
-                f.write('I[index] = {}\n'.format(I[index]))
+                # f.write('I.shape = {}\n'.format(I.shape))
+                # f.write('np.argmax(I) = {}\n'.format(index))
+                # f.write('I[index] = {}\n'.format(I[index]))
 
                 f.write('\n')
 
-                f.write('landmarks_predicts.shape = {}\n'.format(landmarks_predicts.shape))
-                f.write('landmarks_predicts[index] = {}\n'.format(landmarks_predicts[index]))
+                #f.write('landmarks_predicts.shape = {}\n'.format(landmarks_predicts.shape))
+                #f.write('landmarks_predicts[index] = {}\n'.format(landmarks_predicts[index]))
 
                 f.write('\n')
 
@@ -341,11 +342,15 @@ class YoloTinyNet(Net):
 
                 f.write('landmarks_loss = {}\n'.format(landmarks_loss))
 
+                f.write('\n')
+
+                f.write('all losses = {} {} {} {}\n'.format(class_loss, object_loss, coord_loss, noobject_loss))
+
                 f.write('\n\n*************\n\n')
                 f.flush()
             return False
 
-        debug_pring_landmarks_loss = tf.py_func(_debug_print_func, [landmarks_loss,label, label_raw, label_landmarks, landmarks_predicts, base_landmarks, processed_landmarks_predicts, diff, I], [tf.bool])
+        debug_pring_landmarks_loss = tf.py_func(_debug_print_func, [landmarks_loss,label, label_raw, label_landmarks, landmarks_predicts, base_landmarks, processed_landmarks_predicts, diff, I, class_loss, object_loss, coord_loss, noobject_loss], [tf.bool])
         with tf.control_dependencies(debug_pring_landmarks_loss):
             landmarks_loss = tf.identity(landmarks_loss, name='debug_pring_landmarks_loss')
 

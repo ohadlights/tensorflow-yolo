@@ -74,7 +74,7 @@ bb_predicts, landmarks_predict = net.inference(image)
 
 sess = tf.Session()
 
-np_img = cv2.imread('001_01_01_050_00.png')
+np_img = cv2.imread('SDK.pcsdk_Frame_1193_.png')
 resized_img = cv2.resize(np_img, (416, 416))
 np_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB)
 
@@ -92,10 +92,10 @@ np_predict, np_landmarks_predict = sess.run([bb_predicts, landmarks_predict], fe
 xmin, ymin, xmax, ymax, class_num, index = process_predicts(np_predict)
 landmarks = process_landmarks_predicts(np_landmarks_predict, index)
 class_name = classes_name[class_num]
-cv2.rectangle(resized_img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 0, 255))
+cv2.rectangle(resized_img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 0, 255), 2)
 for i in range(len(landmarks)):
-    cv2.circle(resized_img, (landmarks[i][0], landmarks[i][1]), 2, (0, 255, 0), 2)
-cv2.putText(resized_img, class_name, (int(xmin), int(ymin)), 2, 1.5, (0, 0, 255))
+    cv2.circle(resized_img, (landmarks[i][0], landmarks[i][1]), 1, (0, 255, 0), 2)
+#cv2.putText(resized_img, class_name, (int(xmin), int(ymin)), 2, 1.5, (0, 0, 255))
 cv2.imshow('result', resized_img)
 cv2.waitKey(0)
 #cv2.imwrite('001_01_01_050_00_out.jpg', resized_img)
