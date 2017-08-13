@@ -1,3 +1,4 @@
+import os
 import sys
 
 sys.path.append('./')
@@ -72,31 +73,32 @@ net = YoloTinyNet(common_params, net_params, test=True)
 image = tf.placeholder(tf.float32, (1, 416, 416, 3))
 bb_predicts, landmarks_predict = net.inference(image)
 
-sess = tf.Session()
+with tf.Session() as sess:
 
-np_img = cv2.imread('SDK.pcsdk_Frame_1193_.png')
-resized_img = cv2.resize(np_img, (416, 416))
-np_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB)
+    saver = tf.train.Saver(net.trainable_collection)
+    saver.restore(sess, 'models/train_face_new - Copy (2)/model.ckpt-4000')
 
-np_img = np_img.astype(np.float32)
+    for image_file in os.listdir('images'):
 
-np_img = np_img / 255.0 * 2 - 1
-np_img = np.reshape(np_img, (1, 416, 416, 3))
+        np_img = cv2.imread('images\\' + image_file)
+        resized_img = cv2.resize(np_img, (416, 416))
+        np_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB)
 
-saver = tf.train.Saver(net.trainable_collection)
+        np_img = np_img.astype(np.float32)
 
-saver.restore(sess, 'models/train_face/model.ckpt-5000')
+        np_img = np_img / 255.0 * 2 - 1
+        np_img = np.reshape(np_img, (1, 416, 416, 3))
 
-np_predict, np_landmarks_predict = sess.run([bb_predicts, landmarks_predict], feed_dict={image: np_img})
+        np_predict, np_landmarks_predict = sess.run([bb_predicts, landmarks_predict], feed_dict={image: np_img})
 
-xmin, ymin, xmax, ymax, class_num, index = process_predicts(np_predict)
-landmarks = process_landmarks_predicts(np_landmarks_predict, index)
-class_name = classes_name[class_num]
-cv2.rectangle(resized_img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 0, 255), 2)
-for i in range(len(landmarks)):
-    cv2.circle(resized_img, (landmarks[i][0], landmarks[i][1]), 1, (0, 255, 0), 2)
-#cv2.putText(resized_img, class_name, (int(xmin), int(ymin)), 2, 1.5, (0, 0, 255))
-cv2.imshow('result', resized_img)
-cv2.waitKey(0)
-#cv2.imwrite('001_01_01_050_00_out.jpg', resized_img)
-sess.close()
+        xmin, ymin, xmax, ymax, class_num, index = process_predicts(np_predict)
+        landmarks = process_landmarks_predicts(np_landmarks_predict, index)
+        class_name = classes_name[class_num]
+        cv2.rectangle(resized_img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 0, 255), 2)
+        for i in range(len(landmarks)):
+            cv2.circle(resized_img, (landmarks[i][0], landmarks[i][1]), 1, (0, 255, 0), 2)
+        #cv2.putText(resized_img, class_name, (int(xmin), int(ymin)), 2, 1.5, (0, 0, 255))
+        cv2.imshow('result', resized_img)
+        cv2.waitKey(0)
+        #cv2.imwrite('001_01_01_050_00_out.jpg', resized_img)
+

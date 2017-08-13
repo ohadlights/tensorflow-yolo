@@ -102,7 +102,7 @@ class YoloSolver(Solver):
 
             duration = time.time() - start_time
 
-            assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+            assert not np.isnan(loss_value) and loss_value < 100, 'Model diverged with loss = NaN'
 
             if step % 10 == 0:
                 num_examples_per_step = self.dataset.batch_size

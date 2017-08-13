@@ -53,11 +53,29 @@ def cut_down_train_list(list_path, output_path, cut_datasets, keep_ratio, image_
             output_file.write(l)
 
 
+def validate_train_list(list_path):
+    content = open(list_path).readlines()
+    with open(list_path, 'w') as f:
+        for line in content:
+            split = line.strip().split(' ')
+            length = len(split)
+            if length == 16:
+                try:
+                    for i in range(1, 16):
+                        temp = int(split[i])
+                    f.write(line)
+                except:
+                    continue
+            else:
+                print('error: {}'.format(line.strip()))
+
+
 if __name__ == "__main__":
-    preprocess(source_root_dir=r'Z:\Training\Detection\Annotations',
-               output_path=r'D:\GIT\deep-learning\object-detection\tensorflow-yolo\data\train_face.txt')
-    # cut_down_train_list(list_path=r'D:\GIT\deep-learning\object-detection\tensorflow-yolo\data\train_face.txt',
-    #                     output_path=r'D:\GIT\deep-learning\object-detection\tensorflow-yolo\data\train_face_reduced.txt',
-    #                     cut_datasets=['morph', 'webface'],
-    #                     keep_ratio=0.25,
-    #                     image_size=416)
+    # preprocess(source_root_dir=r'Z:\Training\Detection\Annotations',
+    #            output_path=r'D:\GIT\deep-learning\object-detection\tensorflow-yolo\data\train_face_new.txt')
+    # validate_train_list(r'D:\GIT\deep-learning\object-detection\tensorflow-yolo\data\train_face_new.txt')
+    cut_down_train_list(list_path=r'D:\GIT\deep-learning\object-detection\tensorflow-yolo\data\train_face_new.txt',
+                        output_path=r'D:\GIT\deep-learning\object-detection\tensorflow-yolo\data\train_face_new_cut.txt',
+                        cut_datasets=['morph', 'webface'],
+                        keep_ratio=1.0,
+                        image_size=416)
