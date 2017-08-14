@@ -66,8 +66,8 @@ class YoloSolver(Solver):
         self.labels = tf.placeholder(tf.float32, (self.batch_size, self.max_objects, 5+10)) # added 10 for landmarks
         self.objects_num = tf.placeholder(tf.int32, (self.batch_size))
 
-        self.predicts, self.landmarks_predict = self.net.inference(self.images)
-        self.total_loss, self.nilboy = self.net.loss(self.predicts, self.landmarks_predict, self.labels, self.objects_num)
+        self.predicts = self.net.inference(self.images)
+        self.total_loss, self.nilboy = self.net.loss(self.predicts, self.labels, self.objects_num)
 
         tf.summary.scalar('loss', self.total_loss)
         self.train_op = self._train()

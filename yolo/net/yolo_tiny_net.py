@@ -88,35 +88,25 @@ class YoloTinyNet(Net):
         local2 = self.local('local2', local1, 256, 4096)
 
         local3 = self.local('local3', local2, 4096,
-                            self.cell_size * self.cell_size * (self.num_classes + self.boxes_per_cell * 5), leaky=False,
+                            self.cell_size * self.cell_size * (self.num_classes + self.boxes_per_cell * 15), leaky=False,
                             pretrain=False, train=True)
 
         n1 = self.cell_size * self.cell_size * self.num_classes
 
         n2 = n1 + self.cell_size * self.cell_size * self.boxes_per_cell
 
+        n3 = n2 + self.cell_size * self.cell_size * self.boxes_per_cell * 4
+
         class_probs = tf.reshape(local3[:, 0:n1], (-1, self.cell_size, self.cell_size, self.num_classes))
         scales = tf.reshape(local3[:, n1:n2], (-1, self.cell_size, self.cell_size, self.boxes_per_cell))
-        boxes = tf.reshape(local3[:, n2:], (-1, self.cell_size, self.cell_size, self.boxes_per_cell * 4))
+        boxes = tf.reshape(local3[:, n2:n3], (-1, self.cell_size, self.cell_size, self.boxes_per_cell * 4))
+        landmarks = tf.reshape(local3[:, n3:], (-1, self.cell_size, self.cell_size, self.boxes_per_cell * 10))
 
-        local3 = tf.concat([class_probs, scales, boxes], 3)
+        local3 = tf.concat([class_probs, scales, boxes, landmarks], 3)
 
-        bb_predicts = local3
+        predicts = local3
 
-############### Landmarks prediction ###############
-
-        landmarks_1 = self.local('landmarks_1', temp_conv, self.cell_size * self.cell_size * 512, 256)
-        landmarks_2 = self.local('landmarks_2', landmarks_1, 256, 4096)
-        landmarks_3 = self.local('landmarks_3', landmarks_2, 4096,
-                                 self.cell_size * self.cell_size * (self.boxes_per_cell * 10), leaky=False,
-                                 pretrain=False, train=True)
-        #landmarks_3 = tf.reshape(landmarks_3, (self.cell_size, self.cell_size, self.boxes_per_cell, 10))
-
-        landmarks = tf.reshape(landmarks_3[:, :], (-1, self.cell_size, self.cell_size, self.boxes_per_cell, 10))
-
-############### Landmarks prediction ###############
-
-        return bb_predicts, landmarks
+        return predicts
 
     def iou(self, boxes1, boxes2):
         """calculate ious
@@ -157,7 +147,7 @@ class YoloTinyNet(Net):
         """
         return num < object_num
 
-    def body1(self, num, object_num, loss, predict, landmarks_predicts, labels, nilboy):
+    def body1(self, num, object_num, loss, predict, labels, nilboy):
         """
         calculate loss
         Args:
@@ -308,7 +298,7 @@ class YoloTinyNet(Net):
 
         landmarks_loss = tf.nn.l2_loss(I * diff / (self.image_size / self.cell_size)) * self.landmarks_scale
 
-        def _debug_print_func(landmarks_loss, label, label_raw, label_landmarks, landmarks_predicts, base_landmarks, processed_landmarks_predicts, diff, I, class_loss, object_loss, coord_loss, noobject_loss):
+        def _debug_print_func(landmarks_loss, label, label_raw, label_landmarks, base_landmarks, processed_landmarks_predicts, diff, I, class_loss, object_loss, coord_loss, noobject_loss):
             log_file = r'd:\temp\debug_yolo.txt'
             if os.path.exists(log_file):
                 append_write = 'a'  # append if already exists
@@ -350,7 +340,7 @@ class YoloTinyNet(Net):
                 f.flush()
             return False
 
-        debug_pring_landmarks_loss = tf.py_func(_debug_print_func, [landmarks_loss,label, label_raw, label_landmarks, landmarks_predicts, base_landmarks, processed_landmarks_predicts, diff, I, class_loss, object_loss, coord_loss, noobject_loss], [tf.bool])
+        debug_pring_landmarks_loss = tf.py_func(_debug_print_func, [landmarks_loss,label, label_raw, label_landmarks, base_landmarks, processed_landmarks_predicts, diff, I, class_loss, object_loss, coord_loss, noobject_loss], [tf.bool])
         with tf.control_dependencies(debug_pring_landmarks_loss):
             landmarks_loss = tf.identity(landmarks_loss, name='debug_pring_landmarks_loss')
 
@@ -359,9 +349,9 @@ class YoloTinyNet(Net):
         nilboy = I
 
         return num + 1, object_num, [loss[0] + class_loss, loss[1] + object_loss, loss[2] + noobject_loss,
-                                     loss[3] + coord_loss, loss[4] + landmarks_loss], predict, landmarks_predicts, labels, nilboy
+                                     loss[3] + coord_loss, loss[4] + landmarks_loss], predict, labels, nilboy
 
-    def loss(self, bb_predicts, landmarks_predicts, labels, objects_num):
+    def loss(self, predicts, labels, objects_num):
         """Add Loss to all the trainable variables
 
         Args:
@@ -377,14 +367,13 @@ class YoloTinyNet(Net):
         landmarks_loss = tf.constant(0, tf.float32)
         loss = [0, 0, 0, 0, 0]
         for i in range(self.batch_size):
-            predict = bb_predicts[i, :, :, :]
-            predict_ls = landmarks_predicts[i, :, :, :, :]
+            predict = predicts[i, :, :, :]
             label = labels[i, :, :]
             object_num = objects_num[i]
             nilboy = tf.ones([13, 13, 2])
             tuple_results = tf.while_loop(self.cond1, self.body1, [tf.constant(0), object_num,
                                                                    [class_loss, object_loss, noobject_loss, coord_loss, landmarks_loss],
-                                                                   predict, predict_ls, label, nilboy])
+                                                                   predict, label, nilboy])
             for j in range(5):
                 loss[j] = loss[j] + tuple_results[2][j]
             nilboy = tuple_results[6]
